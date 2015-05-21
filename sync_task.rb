@@ -263,12 +263,13 @@ timeMin=Date.today
 timeMax=timeMin >> term_month
 
 
+## Officeのタスク一覧を取ってきて
 office_tasks=x.get_office_tasks(timeMin, timeMax)
 
+## Googleのタスク一覧を取ってきて
 x.get_google_tasks(timeMin, timeMax)
 
-
+## 比較してGoogleにINSERT
 x.sync(office_tasks)
 
 exit 0
-

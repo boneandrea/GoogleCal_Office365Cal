@@ -1,8 +1,0 @@
-{"access_token":"",
-"authorization_uri":"https://accounts.google.com/o/oauth2/auth",
-"client_id":"",
-"client_secret":"",
-"expires_in":3600,
-"refresh_token":"",
-"token_credential_uri":"https://accounts.google.com/o/oauth2/token",
-"issued_at":""}
