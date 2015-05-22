@@ -1,38 +1,45 @@
 # GCal_365Cal
 
-Office365カレンダーの内容をGoogleカレンダーに転記します。
+## Office365カレンダーの内容をGoogleカレンダーに転記します。
 転記する期間は、今日からNヶ月間です。(default: 1)
-[実行方法]
-% ./sync_task.rb [N]
+
+### 実行方法
+
+% ./sync_task.rb [N]  
 % ./sync_task.rb help
 
-[実行前の設定]
-1. 365.yamlとcalendar.jsonを以下の内容で作成します。
-- client_id, client_secretは https://console.developers.google.com/project?authuser=0
-- access_tokenは https://developers.google.com/google-apps/calendar/auth
+### 実行前の設定
+#### 365.yamlとcalendar.jsonを以下の内容で作成します。  
+client_id, client_secretは https://console.developers.google.com/project?authuser=0  
+access_tokenは https://developers.google.com/google-apps/calendar/auth
 から調達されたし。
 
 365.yaml:
-office_id: <OfficeのID>
-office_pass: <Officeのpassword>
-
+```
+office_id: *OfficeのID*  
+office_pass: *Officeのpassword*  
+```
 
 calendar.json:
-{
-"access_token":"",
-"authorization_uri":"https://accounts.google.com/o/oauth2/auth",
-"client_id":"",
-"client_secret":""
-"expires_in":3600,
-"refresh_token":""
-"token_credential_uri":"https://accounts.google.com/o/oauth2/token",
-"issued_at":""
+
+```
+{  
+"access_token" : "",  
+"authorization_uri" : "https://accounts.google.com/o/oauth2/auth",  
+"client_id" : "",  
+"client_secret":""  
+"expires_in":3600,  
+"refresh_token":""  
+"token_credential_uri":"https://accounts.google.com/o/oauth2/token",  
+"issued_at":""  
 }
+```
 
-
-2. ライブラリ設定
+#### ライブラリ設定  
 % bundle install
 
-3. 実行
+#### 実行
+% ./sync_task.rb [N]  
+
 
 

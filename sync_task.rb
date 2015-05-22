@@ -82,13 +82,10 @@ class MyGCal
                                               'timeMax'=>timeMax.rfc3339
                                              })
 
-    pp JSON.parse(result.body)
+    if is_error_response(result) then
+      pp JSON.parse(result.body)
 
-    if JSON.parse(result.body).has_key?("error") then
-      json=JSON.parse(result.body.error)
-      if json.has_key?("code") && json.code = "401" then
-        return false
-      end
+      return false
     end
       
 
@@ -102,11 +99,62 @@ class MyGCal
         end
         result = @@client.execute(:api_method => @@service.events.list,
                                   :parameters => {'pageToken' => page_token})
-	    pp result
+
+        if is_error_response(result) then
+          pp JSON.parse(result.body)
+
+          #      json=JSON.parse(result.body["error"])
+          #      if json.has_key?("code") && json.code = "401" then
+          #        error_mail("Ah, 401")
+          #      end
+          error_mail("Err")
+
+          return false
+        end
       end
     end
 
     print "#{@@entries.size} entries\n"
+
+    true
+
+  end
+  
+  def is_error_response(r)
+    JSON.parse(r.body).has_key?("error")
+
+    # TODO: 予定に2種類ある。終日と時刻ありと。
+#    "start"=>{"dateTime"=>"2015-05-22T17:00:00+09:00"},
+#    "end"=>{"dateTime"=>"2015-05-22T18:00:00+09:00"},
+
+#    "start"=>{"date"=>"2015-05-22"},
+#    "end"=>{"date"=>"2015-05-22"},
+
+    
+  end
+  
+  def error_mail(error_msg)
+      
+      options = { :address              => @@config["smtp_server"],
+		          :port                 => @@config["smtp_port"],
+		          :authentication       => @@config["smtp_auth"],
+                  :enable_starttls_auto => @@config["enable_starttls_auto"],
+		          :ssl => @@config["ssl"]
+                }
+
+
+      Mail.defaults do
+		delivery_method :smtp, options
+      end
+
+      mail = Mail.new do
+	    from     "365@peixe.biz"
+	    to       "banchou@peixe.biz"
+	    subject  error_msg
+	    body    "Oh,no"
+      end
+
+      mail.deliver!
 
   end
   
@@ -135,12 +183,12 @@ class MyGCal
 
 
     is_duplicate=false
-
+    
     @@entries.each do |e|
 
       mydate= (e.start["date"] || e.start["dateTime"]).to_s
       
-      p "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
+      #      p "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
       if e.summary == task_name && compare_date(mydate, start_time) then
         p "HIT! DUP!"
         is_duplicate = true
@@ -259,7 +307,7 @@ end
 
 
 
-timeMin=Date.today
+timeMin=Date.today - 1
 timeMax=timeMin >> term_month
 
 
@@ -267,9 +315,12 @@ timeMax=timeMin >> term_month
 office_tasks=x.get_office_tasks(timeMin, timeMax)
 
 ## Googleのタスク一覧を取ってきて
-x.get_google_tasks(timeMin, timeMax)
+if x.get_google_tasks(timeMin, timeMax) then
+  ## 比較してGoogleにINSERT
+  x.sync(office_tasks)
 
-## 比較してGoogleにINSERT
-x.sync(office_tasks)
+else
+  p "google failed"
+end
 
 exit 0
