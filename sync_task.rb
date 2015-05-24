@@ -85,6 +85,8 @@ class MyGCal
     if is_error_response(result) then
       pp JSON.parse(result.body)
 
+      error_mail(result.body["error"]["code"] + result.body["error"]["code"])
+
       return false
     end
       
@@ -101,13 +103,8 @@ class MyGCal
                                   :parameters => {'pageToken' => page_token})
 
         if is_error_response(result) then
-          pp JSON.parse(result.body)
 
-          #      json=JSON.parse(result.body["error"])
-          #      if json.has_key?("code") && json.code = "401" then
-          #        error_mail("Ah, 401")
-          #      end
-          error_mail("Err")
+          error_mail(result.body["error"]["code"] + result.body["error"]["code"])
 
           return false
         end
