@@ -14,7 +14,7 @@ require 'mail'
 
 
 $CONF_FILE="365.yaml"
-
+$MYDEBUG=1
 
 class MyGCal
 
@@ -82,14 +82,18 @@ class MyGCal
                                               'timeMax'=>timeMax.rfc3339
                                              })
 
-    if is_error_response(result) then
-      pp JSON.parse(result.body)
-
-      error_mail(result.body["error"]["code"] + result.body["error"]["code"])
+    begin
+      if is_error_response(result) then
+        pp result.body
+        error_response=JSON.parse(result.body["error"])
+        error_mail(error_response["code"])
+        return false
+      end
+    rescue => e
 
       return false
+
     end
-      
 
     catch(:exit) do
       while true
@@ -170,6 +174,12 @@ class MyGCal
   end
         
 
+  def myp(s)
+    if $MYDEBUG == 1 then
+      puts s
+    end
+  end
+
   ## insert に失敗したらfalse, それ以外はtrue
 
   def check_and_insert(arg)
@@ -185,7 +195,8 @@ class MyGCal
 
       mydate= (e.start["date"] || e.start["dateTime"]).to_s
       
-      #      p "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
+      myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
+
       if e.summary == task_name && compare_date(mydate, start_time) then
         p "HIT! DUP!"
         is_duplicate = true
@@ -304,9 +315,8 @@ end
 
 
 
-timeMin=Date.today - 1
-timeMax=timeMin >> term_month
-
+timeMax=Date.today >> term_month
+timeMin=Date.today - 1 # 全日予定をとるため -1 する
 
 ## Officeのタスク一覧を取ってきて
 office_tasks=x.get_office_tasks(timeMin, timeMax)
