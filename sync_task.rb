@@ -170,7 +170,7 @@ class MyGCal
       if check_and_insert(e) then
         p e
       else
-        p "err"
+        p "NO"
       end
     end
     
@@ -183,6 +183,23 @@ class MyGCal
     end
   end
 
+  def is_contained(task_name, start_time)
+    @@entries.each do |e|
+
+      mydate= (e.start["date"] || e.start["dateTime"]).to_s
+      
+
+      if e.summary == task_name && compare_date(mydate, start_time) then
+        p "HIT! DUP!"
+        return true
+      else
+        myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
+      end
+
+    end
+    false
+  end
+
   ## insert に失敗したらfalse, それ以外はtrue
 
   def check_and_insert(arg)
@@ -191,42 +208,38 @@ class MyGCal
     start_time=arg[:start]
     end_time=arg[:end]
 
-
-    is_duplicate=false
-    
-    @@entries.each do |e|
-
-      mydate= (e.start["date"] || e.start["dateTime"]).to_s
-      
-
-      if e.summary == task_name && compare_date(mydate, start_time) then
-        p "HIT! DUP!"
-        is_duplicate = true
-        break
-      else
-        myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
-      end
-
-    end
-
-    if is_duplicate then
+    if is_contained(task_name, start_time) then
       return true
     else
 
       puts "INSERT"
-
       event = {
         'summary' => task_name,
         'location' => 'Somewhere',
-        'start' => {
-          'date' => start_time.to_s.sub(/T.*/,"")
-        },
-        'end' => {
-          'date' => end_time.to_s.sub(/T.*/,"")
-        },
       }
 
-      p event
+      if(arg[:isAllDay]) then
+        event["start"]={
+          'date' => start_time.to_s.sub(/T.*/,""),
+          "time_zone"=>"Asia/Tokyo"
+        }
+        event["end"]={
+          'date' => end_time.to_s.sub(/T.*/,""),
+          "time_zone"=>"Asia/Tokyo"
+        }
+      else
+        event["start"]={
+          'dateTime' => start_time.to_s,
+          "time_zone"=>"Asia/Tokyo"
+        }
+        event["end"]={
+          'dateTime' => end_time.to_s,
+          "time_zone"=>"Asia/Tokyo"
+        }
+      end
+
+      pp "OH"
+      pp event
       
       begin
         result = @@client.execute(:api_method => @@service.events.insert,
@@ -235,9 +248,13 @@ class MyGCal
                                   :headers => {'Content-Type' => 'application/json'})
 
         json=JSON.parse(result.body)
+        p json
         return json["summary"] == task_name
+        
       rescue Exception => e
-        p e.class
+
+        p e
+        
       end
     end
     false
@@ -247,15 +264,7 @@ class MyGCal
   
   def compare_date(d1,d2)
 
-    d1=d1.to_s.sub(/T.*/,"")
-    d2=d2.to_s.sub(/T.*/,"")
-
-    date1=Date.parse(d1.to_s)
-    date2=Date.parse(d2.to_s)
-
-    date1.year == date2.year &&
-      date1.month == date2.month &&
-      date1.day == date2.day
+    Time.parse(d1) == Time.parse(d2)
     
   end
 
@@ -268,13 +277,14 @@ class MyGCal
 
     certs =  [$OFFICE_ID, $OFFICE_PASS]
     json = JSON.parse(open(uri, {:http_basic_authentication => certs}).read)
-
     json["value"].map do |t|
+
       {
         :subject=> t["Subject"],
         :start=> Time.parse(t["Start"]).localtime.iso8601.to_s,
-        :end=> Time.parse(t["End"]).localtime.iso8601.to_s
-      }      
+        :end=> Time.parse(t["End"]).localtime.iso8601.to_s,
+        :isAllDay => t["IsAllDay"]
+      }
     end
 
   end
@@ -298,7 +308,7 @@ AAA
   end
 
 end
-
+             
 
 if ARGV[0] == "help" then
   help=true
