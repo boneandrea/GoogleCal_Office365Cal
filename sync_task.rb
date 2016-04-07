@@ -12,9 +12,12 @@ require "pp"
 require 'yaml'
 require 'mail'
 
+require "date"
+require "time"
+
 
 $CONF_FILE="365.yaml"
-$MYDEBUG=1
+$MYDEBUG=0
 
 class MyGCal
 
@@ -164,8 +167,8 @@ class MyGCal
   def sync(office_events)
 
     office_events.each do |e|
-      p e
       if check_and_insert(e) then
+        p e
       else
         p "err"
       end
@@ -195,12 +198,13 @@ class MyGCal
 
       mydate= (e.start["date"] || e.start["dateTime"]).to_s
       
-      myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
 
       if e.summary == task_name && compare_date(mydate, start_time) then
         p "HIT! DUP!"
         is_duplicate = true
         break
+      else
+        myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
       end
 
     end
@@ -209,7 +213,7 @@ class MyGCal
       return true
     else
 
-      STDERR.puts "INSERT"
+      puts "INSERT"
 
       event = {
         'summary' => task_name,
@@ -222,7 +226,8 @@ class MyGCal
         },
       }
 
-
+      p event
+      
       begin
         result = @@client.execute(:api_method => @@service.events.insert,
                                   :parameters => {'calendarId' => 'primary'},
@@ -267,9 +272,9 @@ class MyGCal
     json["value"].map do |t|
       {
         :subject=> t["Subject"],
-        :start=> t["Start"],
-        :end=>t["End"]
-      }
+        :start=> Time.parse(t["Start"]).localtime.iso8601.to_s,
+        :end=> Time.parse(t["End"]).localtime.iso8601.to_s
+      }      
     end
 
   end
