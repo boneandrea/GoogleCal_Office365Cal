@@ -23,7 +23,7 @@ class MyGCal
 
   @@CREDENTIAL_STORE_FILE = "calendar.json"
   @@client = nil
-  @@entries=[]
+  @@google_entries=[]
   @@service=nil
   @@config=nil
   
@@ -76,52 +76,77 @@ class MyGCal
   def get_google_tasks(timeMin, timeMax)
     
     @@service = @@client.discovered_api('calendar', 'v3')
-    
+
     page_token = nil
+
+    # TODO: これに書き換えたい
+    # begin
+    #   result = @@client.list_events('primary')
+    #   result.items.each do |e|
+    #     print e.summary + "\n"
+    #   end
+    #   if result.next_page_token != page_token
+    #     page_token = result.next_page_token
+    #   else
+    #     page_token = nil
+    #   end
+    # end while !page_token.nil?
+
+    # exit
     
-    result = @@client.execute(:api_method => @@service.events.list,
-                              :parameters => {'calendarId' => 'primary',
-                                              'timeMin'=>timeMin.rfc3339,
-                                              'timeMax'=>timeMax.rfc3339
-                                             })
-
     begin
-      if is_error_response(result) then
-        pp result.body
-        error_response=JSON.parse(result.body["error"])
-        error_mail(error_response["code"])
-        return false
-      end
+      result = @@client.execute(:api_method => @@service.events.list,
+                                :parameters => {'calendarId' => 'primary',
+                                                'timeMin'=>timeMin.rfc3339,
+                                                'timeMax'=>timeMax.rfc3339,
+                                                :maxResults => 2500
+                                               })
+
     rescue => e
-
-      return false
-
+      p e
+      exit
     end
+
+        
+     @@google_entries.concat(result.data.items)
+
+     return true
+
+    # ############### これ以降はいっぱい予定がある場合
 
     catch(:exit) do
       while true
-        
-        @@entries.concat(result.data.items)
 
         if !(page_token = result.data.next_page_token)
           throw :exit
         end
-        result = @@client.execute(:api_method => @@service.events.list,
-                                  :parameters => {'pageToken' => page_token})
 
-        if is_error_response(result) then
+        begin
+          result = @@client.execute(:api_method => @@service.events.list,
+                                    :parameters => {'pageToken' => page_token,
+                                                :maxResults => 2500
+                                                   })
 
-          error_mail(result.body["error"]["code"] + result.body["error"]["code"])
+          @@google_entries.concat(result.data.items)
+          if is_error_response(result) then
 
-          return false
+            error_mail(result.body["error"]["code"] + result.body["error"]["code"])
+
+            return false
+          end
+        rescue => e
+          # 最後まで行ったので握りつぶす
+          break
         end
       end
     end
 
-    print "#{@@entries.size} entries\n"
-
+    print "#{@@google_entries.size} entries\n"
+    @@google_entries.each do |e|
+#      pp e
+    end
+        
     true
-
   end
   
   def is_error_response(r)
@@ -164,14 +189,14 @@ class MyGCal
   
   ## 365のイベントで、Googleカレンダーに含まれていなければinsert処理を呼ぶ
 
-  def sync(office_events)
+  def sync(office_tasks)
 
-    office_events.each do |e|
+    office_tasks.each do |e|
+
       if check_and_insert(e) then
         p e
-      else
-        p "NO"
       end
+
     end
     
   end
@@ -183,20 +208,43 @@ class MyGCal
     end
   end
 
-  def is_contained(task_name, start_time)
-    @@entries.each do |e|
+  def is_contained(arg)
+    puts "============================"
 
-      mydate= (e.start["date"] || e.start["dateTime"]).to_s
+    office_task_name=arg[:subject]
+    start_time=arg[:start]
+
+    # s1="2016-04-08T20:00:01+09:00"
+    # s2="2016-04-08T11:00:00+00:00"
+
+    # if(DateTime.parse(s1) == DateTime.parse(s2))
+    #   p "SAME"
+    # else
+    #   p "S!!!AME"
+    # end
+
+    @@google_entries.each do |g|
       
-
-      if e.summary == task_name && compare_date(mydate, start_time) then
-        p "HIT! DUP!"
-        return true
+      if(g.start["dateTime"]) then
+        mydate=Time.parse(g.start["dateTime"].to_s)
+        start_time=Time.parse(g.start["dateTime"].to_s)
       else
-        myp "#{e.summary} == #{task_name} && #{mydate}, #{start_time}"
+        mydate=Time.parse(g.start["date"])
+        start_time=Time.parse(g.start["date"])
       end
 
+      
+
+      # p "TYT #{g.summary}/#{arg[:subject]}"
+      # p mydate
+      # p start_time
+
+      if g.summary == office_task_name && (mydate == start_time) then
+        p "HIT! DUP!"
+        return true
+      end
     end
+
     false
   end
 
@@ -204,17 +252,16 @@ class MyGCal
 
   def check_and_insert(arg)
 
-    task_name=arg[:subject]
     start_time=arg[:start]
     end_time=arg[:end]
 
-    if is_contained(task_name, start_time) then
+    if is_contained(arg) then
       return true
     else
 
       puts "INSERT"
       event = {
-        'summary' => task_name,
+        'summary' => arg[:subject],
         'location' => 'Somewhere',
       }
 
@@ -238,7 +285,6 @@ class MyGCal
         }
       end
 
-      pp "OH"
       pp event
       
       begin
@@ -249,8 +295,8 @@ class MyGCal
 
         json=JSON.parse(result.body)
         p json
-        return json["summary"] == task_name
-        
+        return json["summary"] == arg[:subject]
+
       rescue Exception => e
 
         p e
@@ -258,14 +304,6 @@ class MyGCal
       end
     end
     false
-  end
-
-  ##日付の比較関数
-  
-  def compare_date(d1,d2)
-
-    Time.parse(d1) == Time.parse(d2)
-    
   end
 
   ## 指定期間内の365のイベントリスト取得
@@ -278,7 +316,6 @@ class MyGCal
     certs =  [$OFFICE_ID, $OFFICE_PASS]
     json = JSON.parse(open(uri, {:http_basic_authentication => certs}).read)
     json["value"].map do |t|
-
       {
         :subject=> t["Subject"],
         :start=> Time.parse(t["Start"]).localtime.iso8601.to_s,
@@ -308,7 +345,6 @@ AAA
   end
 
 end
-             
 
 if ARGV[0] == "help" then
   help=true
@@ -342,7 +378,7 @@ if x.get_google_tasks(timeMin, timeMax) then
   x.sync(office_tasks)
 
 else
-  p "google failed"
+  exit 1
 end
 
 exit 0
