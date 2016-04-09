@@ -79,7 +79,8 @@ class MyGCal
     result = @@client.execute(:api_method => @@service.events.list,
                               :parameters => {'calendarId' => 'primary',
                                               'timeMin'=>timeMin.rfc3339,
-                                              'timeMax'=>timeMax.rfc3339
+                                              'timeMax'=>timeMax.rfc3339,
+                                              :maxResults => 2500
                                              })
 
     # if is_error_response(result) then
@@ -90,7 +91,7 @@ class MyGCal
 
     #   return false
     # end
-        @@entries.concat(result.data.items)
+    @@entries.concat(result.data.items)
 
     catch(:exit) do
       while true
@@ -116,13 +117,11 @@ class MyGCal
 
     print "#{@@entries.size} entries\n"
 
-    pp @@entries
-
     @@entries.each do |e|
       if e.summary == delWord
       then
         p "delete one"
-        delete(e.id)
+        delete(e)
       end
     end
 
@@ -173,9 +172,9 @@ class MyGCal
     end
   end
 
-  def delete(id)
+  def delete(e)
     result = @@client.execute(:api_method => @@service.events.delete,
-                              :parameters => {'calendarId' => 'primary', 'eventId' => id})
+                              :parameters => {'calendarId' => 'primary', 'eventId' => e.id})
   end
 
 end
@@ -191,7 +190,6 @@ else
 end
 
 
-p Time.now
 x=MyGCal.new
 
 if help then
@@ -203,6 +201,10 @@ end
 
 timeMax=Date.today 
 timeMin=Date.today - 7
+
+p timeMin
+p timeMax
+
 
 x.get_google_tasks(timeMin, timeMax, ARGV[0])
 
