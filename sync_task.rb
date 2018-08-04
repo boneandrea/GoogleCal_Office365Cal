@@ -1,6 +1,3 @@
-#!/usr/bin/env ruby
-# -*- coding: utf-8 -*-
-
 require 'rubygems'
 require 'google/api_client'
 require 'google/api_client/client_secrets'
@@ -223,8 +220,9 @@ class MyGCal
     #   p "S!!!AME"
     # end
 
+
     @@google_entries.each do |g|
-      
+      p([g.start])
       if(g.start["dateTime"]) then
         mydate=Time.parse(g.start["dateTime"].to_s)
         start_time=Time.parse(g.start["dateTime"].to_s)
