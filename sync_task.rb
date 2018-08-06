@@ -222,8 +222,10 @@ class MyGCal
 
 
     @@google_entries.each do |g|
-      p([g.start])
-      if(g.start["dateTime"]) then
+
+      next unless g.start
+      
+      if g.start["dateTime"] then
         mydate=Time.parse(g.start["dateTime"].to_s)
         start_time=Time.parse(g.start["dateTime"].to_s)
       else
