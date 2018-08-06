@@ -12,18 +12,15 @@ require 'mail'
 require "date"
 require "time"
 
-
-$CONF_FILE="365.yaml"
-$MYDEBUG=0
+$CONF_FILE = "365.yaml"
 
 class MyGCal
-
   @@CREDENTIAL_STORE_FILE = "calendar.json"
   @@client = nil
-  @@google_entries=[]
-  @@service=nil
-  @@config=nil
-  
+  @@google_entries = []
+  @@service = nil
+  @@config = nil
+
   def initialize
     @@client = Google::APIClient.new(
       :application_name => 'Ruby Calendar sample',
@@ -36,27 +33,21 @@ class MyGCal
       p e
       exit 1
     end
-    
-    
   end
 
   ## Google/365 の認証情報設定
   ## ファイルから読む, 失敗 -> 例外
 
   def setup
+    @@config = YAML.load_file(File.dirname(__FILE__) + "/" + $CONF_FILE)
 
-    @@config = YAML.load_file(File.dirname(__FILE__)+"/"+$CONF_FILE)
-    
-    $OFFICE_ID=@@config["office_id"]
-    $OFFICE_PASS=@@config["office_pass"]
-
+    $OFFICE_ID = @@config["office_id"]
+    $OFFICE_PASS = @@config["office_pass"]
   end
 
-
   def auth_google
-    
-    file_storage = Google::APIClient::FileStorage.new(File.dirname(__FILE__)+"/"+@@CREDENTIAL_STORE_FILE)
-    
+    file_storage = Google::APIClient::FileStorage.new(File.dirname(__FILE__) + "/" + @@CREDENTIAL_STORE_FILE)
+
     if file_storage.authorization.nil?
       client_secrets = Google::APIClient::ClientSecrets.load
       @@client.authorization = client_secrets.to_authorization
@@ -64,14 +55,11 @@ class MyGCal
     else
       @@client.authorization = file_storage.authorization
     end
-
   end
-  
-  
+
   ## 指定期間中のGoogleカレンダーイベント取得
 
   def get_google_tasks(timeMin, timeMax)
-    
     @@service = @@client.discovered_api('calendar', 'v3')
 
     page_token = nil
@@ -90,24 +78,22 @@ class MyGCal
     # end while !page_token.nil?
 
     # exit
-    
+
     begin
       result = @@client.execute(:api_method => @@service.events.list,
                                 :parameters => {'calendarId' => 'primary',
-                                                'timeMin'=>timeMin.rfc3339,
-                                                'timeMax'=>timeMax.rfc3339,
+                                                'timeMin' => timeMin.rfc3339,
+                                                'timeMax' => timeMax.rfc3339,
                                                 :maxResults => 2500
                                                })
-
     rescue => e
       p e
       exit
     end
 
-        
-     @@google_entries.concat(result.data.items)
+    @@google_entries.concat(result.data.items)
 
-     return true
+    return true
 
     # ############### これ以降はいっぱい予定がある場合
 
@@ -142,10 +128,10 @@ class MyGCal
     @@google_entries.each do |e|
 #      pp e
     end
-        
+
     true
   end
-  
+
   def is_error_response(r)
     JSON.parse(r.body).has_key?("error")
 
@@ -155,19 +141,15 @@ class MyGCal
 
 #    "start"=>{"date"=>"2015-05-22"},
 #    "end"=>{"date"=>"2015-05-22"},
-
-    
   end
-  
+
   def error_mail(error_msg)
-      
-      options = { :address              => @@config["smtp_server"],
+      options = { :address => @@config["smtp_server"],
 		          :port                 => @@config["smtp_port"],
 		          :authentication       => @@config["smtp_auth"],
                   :enable_starttls_auto => @@config["enable_starttls_auto"],
 		          :ssl => @@config["ssl"]
                 }
-
 
       Mail.defaults do
 		delivery_method :smtp, options
@@ -177,39 +159,23 @@ class MyGCal
 	    from     "365@peixe.biz"
 	    to       "banchou@peixe.biz"
 	    subject  error_msg
-	    body    "Oh,no"
+	    body "Oh,no"
       end
 
       mail.deliver!
-
   end
-  
+
   ## 365のイベントで、Googleカレンダーに含まれていなければinsert処理を呼ぶ
 
   def sync(office_tasks)
-
     office_tasks.each do |e|
-
-      if check_and_insert(e) then
-        p e
-      end
-
-    end
-    
-  end
-        
-
-  def myp(s)
-    if $MYDEBUG == 1 then
-      puts s
+      p e if check_and_insert(e)
     end
   end
 
   def is_contained(arg)
-    puts "============================"
-
-    office_task_name=arg[:subject]
-    start_time=arg[:start]
+    office_task_name = arg[:subject]
+    start_time = arg[:start]
 
     # s1="2016-04-08T20:00:01+09:00"
     # s2="2016-04-08T11:00:00+00:00"
@@ -220,20 +186,16 @@ class MyGCal
     #   p "S!!!AME"
     # end
 
-
     @@google_entries.each do |g|
-
       next unless g.start
-      
-      if g.start["dateTime"] then
-        mydate=Time.parse(g.start["dateTime"].to_s)
-        start_time=Time.parse(g.start["dateTime"].to_s)
-      else
-        mydate=Time.parse(g.start["date"])
-        start_time=Time.parse(g.start["date"])
-      end
 
-      
+      if g.start["dateTime"] then
+        mydate = Time.parse(g.start["dateTime"].to_s)
+        start_time = Time.parse(g.start["dateTime"].to_s)
+      else
+        mydate = Time.parse(g.start["date"])
+        start_time = Time.parse(g.start["date"])
+      end
 
       # p "TYT #{g.summary}/#{arg[:subject]}"
       # p mydate
@@ -251,9 +213,8 @@ class MyGCal
   ## insert に失敗したらfalse, それ以外はtrue
 
   def check_and_insert(arg)
-
-    start_time=arg[:start]
-    end_time=arg[:end]
+    start_time = arg[:start]
+    end_time = arg[:end]
 
     if is_contained(arg) then
       return true
@@ -265,42 +226,39 @@ class MyGCal
         'location' => 'Somewhere',
       }
 
-      if(arg[:isAllDay]) then
-        event["start"]={
-          'date' => start_time.to_s.sub(/T.*/,""),
-          "time_zone"=>"Asia/Tokyo"
+      if arg[:isAllDay] then
+        event["start"] = {
+          'date' => start_time.to_s.sub(/T.*/, ""),
+          "time_zone" => "Asia/Tokyo"
         }
-        event["end"]={
-          'date' => end_time.to_s.sub(/T.*/,""),
-          "time_zone"=>"Asia/Tokyo"
+        event["end"] = {
+          'date' => end_time.to_s.sub(/T.*/, ""),
+          "time_zone" => "Asia/Tokyo"
         }
       else
-        event["start"]={
+        event["start"] = {
           'dateTime' => start_time.to_s,
-          "time_zone"=>"Asia/Tokyo"
+          "time_zone" => "Asia/Tokyo"
         }
-        event["end"]={
+        event["end"] = {
           'dateTime' => end_time.to_s,
-          "time_zone"=>"Asia/Tokyo"
+          "time_zone" => "Asia/Tokyo"
         }
       end
 
       pp event
-      
+
       begin
         result = @@client.execute(:api_method => @@service.events.insert,
                                   :parameters => {'calendarId' => 'primary'},
                                   :body => JSON.dump(event),
                                   :headers => {'Content-Type' => 'application/json'})
 
-        json=JSON.parse(result.body)
+        json = JSON.parse(result.body)
         p json
         return json["summary"] == arg[:subject]
-
       rescue Exception => e
-
         p e
-        
       end
     end
     false
@@ -309,26 +267,24 @@ class MyGCal
   ## 指定期間内の365のイベントリスト取得
 
   def get_office_tasks(timeMin, timeMax)
+    p "365 CAL: " + timeMin.to_s + " -> " + timeMax.to_s
+    uri = "https://outlook.office365.com/api/v1.0/me/calendarview?" \
+          "startDatetime=#{timeMin.to_s}&endDateTime=#{timeMax.to_s}"
 
-    p "365 CAL: " + timeMin.to_s + " -> "+timeMax.to_s
-    uri="https://outlook.office365.com/api/v1.0/me/calendarview?startDatetime=#{timeMin.to_s}&endDateTime=#{timeMax.to_s}";
-
-    certs =  [$OFFICE_ID, $OFFICE_PASS]
+    certs = [$OFFICE_ID, $OFFICE_PASS]
     json = JSON.parse(open(uri, {:http_basic_authentication => certs}).read)
     json["value"].map do |t|
       {
-        :subject=> t["Subject"],
-        :start=> Time.parse(t["Start"]).localtime.iso8601.to_s,
-        :end=> Time.parse(t["End"]).localtime.iso8601.to_s,
+        :subject => t["Subject"],
+        :start => Time.parse(t["Start"]).localtime.iso8601.to_s,
+        :end => Time.parse(t["End"]).localtime.iso8601.to_s,
         :isAllDay => t["IsAllDay"]
       }
     end
-
   end
 
-
   def help
-    msg=<<-"AAA"
+    msg = <<-"AAA"
 [Officeカレンダー -> Googleカレンダー同期の仕様]
 
 usage: ./add_task.rb [N]
@@ -336,49 +292,15 @@ usage: ./add_task.rb [N]
 今日からNヶ月間において、
 Officeカレンダーにあって,Googleカレンダーにない予定をGoogleカレンダーに登録する。
 N は整数。引数で与える。デフォルトは1。
-AAA
+    AAA
 
     STDERR.puts(msg)
-      
+
     exit 0
-
   end
-
-end
-
-if ARGV[0] == "help" then
-  help=true
-  term_month = nil
-else
-  help=false
-# default: 今日から1ヶ月だけ
-  term_month = (ARGV[0] || 1).to_i
-end
-
-
-p Time.now
-x=MyGCal.new
-
-if help then
-  x.help
-  exit 0
 end
 
 
 
-timeMax=Date.today >> term_month
-timeMin=Date.today - 1 # 全日予定をとるため -1 する
 
-## Officeのタスク一覧を取ってきて
-office_tasks=x.get_office_tasks(timeMin, timeMax)
 
-## Googleのタスク一覧を取ってきて
-if x.get_google_tasks(timeMin, timeMax) then
-  ## 比較してGoogleにINSERT
-  x.sync(office_tasks)
-
-else
-  exit 1
-end
-
-exit 0
