@@ -1,12 +1,11 @@
 # GCal_365Cal
 
 ## Office365カレンダーの内容をGoogleカレンダーに転記します。
-転記する期間は、今日からNヶ月間です。(default: 1)
+転記する期間は、実行時点からNヶ月間です。(default: 1)
 
 ### 実行方法
 
-% ./sync_task.rb [N]  
-% ./sync_task.rb help
+% ./run.sh [N|help]
 
 ### 実行前の設定
 #### 365.yamlとcalendar.jsonを以下の内容で作成します。  
