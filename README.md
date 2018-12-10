@@ -38,6 +38,4 @@ calendar.json:
 % bundle install
 
 #### 実行
-% ./sync_task.rb [N]  
-
-
+% ./sync_task.rb [N]
