@@ -41,5 +41,3 @@ calendar.json:
 % ./sync_task.rb [N]  
 
 
-
-
